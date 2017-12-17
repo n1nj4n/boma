@@ -27,6 +27,7 @@ ABMPlayer::ABMPlayer()
 	right=0;
 	bTriggBomb=false;
 	spawnedBombs=0;
+	remoteTimer=0;
 
 }
 
@@ -54,8 +55,22 @@ void ABMPlayer::AddAvailableBomb()
 }
 void ABMPlayer::Fire()
 {
-	if(spawnedBombs==Bombs)
-		return;
+	bool remote=false;
+	if(remoteTimer!=0)
+		remote=true;
+	if(!remote)
+	{
+		if(spawnedBombs==Bombs)
+			return;
+	}
+	else
+	{
+		if(spawnedBombs==1)
+		{
+			OnRemoteTrigg.Broadcast();
+			return;
+		}
+	}
 
 
 	if(BombTemplate)
@@ -183,13 +198,16 @@ void ABMPlayer::Move(float step)
 
 	}
 	AddActorWorldOffset(stepDir,true);
-//	r+=rotDir;
 }
 
 // Called every frame
 void ABMPlayer::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if(remoteTimer>0)
+		remoteTimer-=DeltaTime;
+	if(remoteTimer<0)
+		remoteTimer=0;
 	Move(Speed*SpeedFactor*DeltaTime);
 	if(bTriggBomb)
 	{
@@ -207,6 +225,18 @@ class APlayfield* ABMPlayer::GetPlayfield()
 void ABMPlayer::KillYourself()
 {
 	MainPawn->RemovePlayer(this);
+}
+
+void ABMPlayer::EnableRemote(float duration)
+{
+	if(duration<0)
+		return;
+	remoteTimer+=duration;
+}
+
+float ABMPlayer::GetRemoteTimer()
+{
+	return remoteTimer;
 }
 
 #pragma optimize("",on)

@@ -6,6 +6,8 @@
 #include "GameFramework/Pawn.h"
 #include "BMPlayer.generated.h"
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FRemoteTrigg);
+
 UCLASS()
 class BOMA_API ABMPlayer : public APawn
 {
@@ -77,6 +79,17 @@ public:
 	UFUNCTION(BlueprintCallable)
 	virtual void AddAvailableBomb();
 
+	// enable remote controlled bombs for a duration of time
+	UFUNCTION(BlueprintCallable)
+	virtual void EnableRemote(float duration);
+
+	// check if remote controlled mode
+	UFUNCTION(BlueprintCallable)
+	virtual float GetRemoteTimer();
+
+	UPROPERTY(BlueprintAssignable)
+	FRemoteTrigg OnRemoteTrigg;
+
 private:
 	void	Move(float timeStep);
 	float	up;
@@ -91,5 +104,7 @@ private:
 
 	FVector	moveFrom;
 	FVector	moveTo;
+
+	float remoteTimer;
 
 };
