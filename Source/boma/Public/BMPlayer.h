@@ -54,16 +54,28 @@ public:
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
+	// release a bomb at current location
 	UFUNCTION(BlueprintCallable)
 	virtual void Fire();
+
+	// move left
 	UFUNCTION(BlueprintCallable)
 	virtual void Up(float amount);
+
+	// move right
 	UFUNCTION(BlueprintCallable)
 	virtual void Right(float amount);
+
 	UFUNCTION(BlueprintCallable)
 	virtual class APlayfield* GetPlayfield();
+
+	// kill player, removes input
 	UFUNCTION(BlueprintCallable)
 	virtual void KillYourself();
+
+	// return used bomb to player
+	UFUNCTION(BlueprintCallable)
+	virtual void AddAvailableBomb();
 
 private:
 	void	Move(float timeStep);
@@ -74,5 +86,10 @@ private:
 	FRotator Rotation;
 
 	class APlayfield* MainPawn;
+
+	int32	spawnedBombs;
+
+	FVector	moveFrom;
+	FVector	moveTo;
 
 };

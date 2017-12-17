@@ -3,7 +3,6 @@
 #include "BMPickup.h"
 #include "components/SphereComponent.h"
 #include "components/StaticMeshComponent.h"
-#include "playfieldplayer.h"
 #include "Kismet/GameplayStatics.h"
 
 // Sets default values

@@ -26,6 +26,7 @@ ABMPlayer::ABMPlayer()
 	up=0;
 	right=0;
 	bTriggBomb=false;
+	spawnedBombs=0;
 
 }
 
@@ -34,6 +35,7 @@ void ABMPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 	Rotation=GetActorRotation();
+	moveTo=moveFrom=GetActorLocation();
 }
 
 // Called to bind functionality to input
@@ -45,17 +47,33 @@ void ABMPlayer::SetupPlayerInputComponent(UInputComponent* ic)
 //	ic->BindAxis("Human1Right",this,&ABMPlayer::Right);
 
 }
+void ABMPlayer::AddAvailableBomb()
+{
+	if(spawnedBombs>0)spawnedBombs--;
 
+}
 void ABMPlayer::Fire()
 {
-	if(up || right)
-	{
-		bTriggBomb=true;
+	if(spawnedBombs==Bombs)
 		return;
-	}
+
+
 	if(BombTemplate)
 	{
-		MainPawn->SpawnTemplate(BombTemplate,GetActorLocation(),this);
+		FVector pos=GetActorLocation();
+		if(!(up==0 && right==0))
+		{
+			if(up<50.f && right<50.f)
+			{
+				pos=moveTo;
+			}
+			else if(up>50.f || right>50.f)
+			{
+				pos=moveFrom;
+			}
+		}
+		MainPawn->SpawnTemplate(BombTemplate,pos,this);
+		spawnedBombs++;
 	}
 }
 void ABMPlayer::Up(float amount)
@@ -71,16 +89,18 @@ void ABMPlayer::Up(float amount)
 	else {up=-100;Rotation.Yaw=180;dir.X=-100.f;}
 	AddActorLocalRotation(Rotation-oldRot);
 	FVector pos=GetActorLocation();
+	moveFrom=pos;
+	moveTo=pos+dir;
 	if(MainPawn)
 	{
-		if(MainPawn->CheckUnbreakable(pos+dir))
+		if(MainPawn->CheckUnbreakable(moveTo))
 		{
 			up=0;
 		}
 		if(up!=0)
 		{
 
-			if(MainPawn->CheckBreakable(pos+dir)>=0)
+			if(MainPawn->CheckBreakable(moveTo)>=0)
 			{
 				up=0;
 			}
@@ -101,16 +121,18 @@ void ABMPlayer::Right(float amount)
 	if(amount>0){right=100;Rotation.Yaw=90;dir.Y=100.f;}
 	else {right=-100;Rotation.Yaw=-90;dir.Y=-100.f;}
 	AddActorLocalRotation(Rotation-oldRot);
+	FVector pos=GetActorLocation();
+	moveFrom=pos;
+	moveTo=pos+dir;
 	if(MainPawn)
 	{
-		FVector pos=GetActorLocation();
-		if(MainPawn->CheckUnbreakable(pos+dir))
+		if(MainPawn->CheckUnbreakable(moveTo))
 		{
 			right=0;
 		}
 		if(right!=0)
 		{
-			if(MainPawn->CheckBreakable(pos+dir)>=0)
+			if(MainPawn->CheckBreakable(moveTo)>=0)
 			{
 				right=0;
 			}
