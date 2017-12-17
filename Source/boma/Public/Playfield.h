@@ -31,6 +31,10 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	int	YSize;
 
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	float	gameTime;
+
+
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	class UClass*	TemplatePlayer1;
@@ -85,6 +89,16 @@ public:
 	bool	BreakBreakable(const FVector& center);
 
 	void	RemovePlayer(class ABMPlayer* player);
+
+	UFUNCTION(BlueprintCallable)
+	bool	IsPlayerAlive(int32 player);
+
+	UFUNCTION(BlueprintCallable)
+	int32	GetPlayerBombs(int32 player);
+
+	UFUNCTION(BlueprintCallable)
+	int32	GetPlayerAvailableBombs(int32 player);
+
 private:
 	void	Fire1();
 	void	Up1(float amount);

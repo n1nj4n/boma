@@ -90,6 +90,8 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FRemoteTrigg OnRemoteTrigg;
 
+	int32 GetAvailableBombs(){return Bombs-spawnedBombs;}
+
 private:
 	void	Move(float timeStep);
 	float	up;

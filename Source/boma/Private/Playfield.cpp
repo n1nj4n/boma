@@ -38,6 +38,7 @@ APlayfield::APlayfield()
 	NoLevelBuilding=false;
 
 	PickupSpawnPercetage=30.f;
+	gameTime=120.f;
 
 }
 void APlayfield::CreateMap()
@@ -336,7 +337,24 @@ void	APlayfield::RemovePlayer(ABMPlayer* player)
 	else if(players[3]==player)
 		players[3]=nullptr;
 }
-
+bool	APlayfield::IsPlayerAlive(int32 player)
+{
+	if(!spawned.Num())
+		return false;
+	return players[player]!=0;
+}
+int32	APlayfield::GetPlayerBombs(int32 player)
+{
+	if(!spawned.Num())
+		return 0;
+	return spawned[player]->Bombs;
+}
+int32	APlayfield::GetPlayerAvailableBombs(int32 player)
+{
+	if(!spawned.Num())
+		return 0;
+	return spawned[player]->GetAvailableBombs();
+}
 
 
 #pragma optimize("",on)
