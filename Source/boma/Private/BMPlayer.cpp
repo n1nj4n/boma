@@ -100,8 +100,8 @@ void ABMPlayer::Up(float amount)
 		return;
 	FVector dir(0,0,0);
 	FRotator oldRot=Rotation;
-	if(amount>0){up=100;Rotation.Yaw=0;dir.X=100.f;}
-	else {up=-100;Rotation.Yaw=180;dir.X=-100.f;}
+	if(amount>0){up=100;Rotation.Yaw=0;dir.X=tileSize;}
+	else {up=-100;Rotation.Yaw=180;dir.X=-tileSize;}
 	AddActorLocalRotation(Rotation-oldRot);
 	FVector pos=GetActorLocation();
 	moveFrom=pos;
@@ -133,8 +133,8 @@ void ABMPlayer::Right(float amount)
 		return;
 	FVector dir(0,0,0);
 	FRotator oldRot=Rotation;
-	if(amount>0){right=100;Rotation.Yaw=90;dir.Y=100.f;}
-	else {right=-100;Rotation.Yaw=-90;dir.Y=-100.f;}
+	if(amount>0){right=100;Rotation.Yaw=90;dir.Y=tileSize;}
+	else {right=-100;Rotation.Yaw=-90;dir.Y=-tileSize;}
 	AddActorLocalRotation(Rotation-oldRot);
 	FVector pos=GetActorLocation();
 	moveFrom=pos;

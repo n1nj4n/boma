@@ -31,14 +31,13 @@ APlayfield::APlayfield()
 	TemplatePlayer4=nullptr;
 	XSize=15;
 	YSize=15;
-	initializeGame=false;
 	memset(players,0,sizeof(players));
 
 	NoLevelBuilding=false;
 
 	PickupSpawnPercetage=30.f;
 	gameTime=120.f;
-	gameOver=false;
+	gameOver=true;
 	gameTimer=0;
 
 }
@@ -48,34 +47,47 @@ void APlayfield::CreateMap()
 		return;
 	Unbreakable->ClearInstances();
 	Breakable->ClearInstances();
-	uint8* tileAlloc=new uint8[XSize*YSize];
-	memset(tileAlloc,0,XSize*YSize);
 
-	// allocate space for players to spawn
-	// player 1
+	// do some random on the size of the playfield
+	xS=XSize+(FMath::Rand()>>14)-2;
+	yS=YSize+(FMath::Rand()>>14)-2;
+	xS&=~1;
+	yS&=~1;
+	xS++;
+	yS++;
+
+
+	uint8* tileAlloc=new uint8[xS*yS];
+	memset(tileAlloc,0,xS*yS);
+
+	// ** allocate space for players to spawn
+	// *  player 1
 	tileAlloc[0]=1;
 	tileAlloc[1]=1;
-	tileAlloc[XSize]=1;
+	tileAlloc[xS]=1;
 
-	// player 2
-	tileAlloc[XSize-1]=1;
-	tileAlloc[XSize-2]=1;
-	tileAlloc[XSize*2-1]=1;
+	// **
+	//  * player 2
+	tileAlloc[xS-1]=1;
+	tileAlloc[xS-2]=1;
+	tileAlloc[xS*2-1]=1;
 
-	// player 3
-	int offset=XSize*(YSize-2);
+	// *
+	// ** player 3
+	int offset=xS*(yS-2);
 	tileAlloc[offset]=1;
-	tileAlloc[offset+XSize]=1;
-	tileAlloc[offset+XSize+1]=1;
+	tileAlloc[offset+xS]=1;
+	tileAlloc[offset+xS+1]=1;
 
-	// player 4
-	offset+=XSize;
+	//  *
+	// ** player 4
+	offset+=xS;
 	tileAlloc[offset-1]=1;
-	tileAlloc[offset+XSize-2]=1;
-	tileAlloc[offset+XSize-1]=1;
+	tileAlloc[offset+xS-2]=1;
+	tileAlloc[offset+xS-1]=1;
 
 	// randomize away some destructible walls.
-	for(int i=0;i<XSize*YSize;i++)
+	for(int i=0;i<xS*yS;i++)
 	{
 		if(FMath::RandRange(0,1)>0.5f)
 			tileAlloc[i]=1;
@@ -84,58 +96,58 @@ void APlayfield::CreateMap()
 
 
 	// create surrounding wall
-	FVector realSize=FVector(YSize,XSize,0)*100.f;
+	FVector realSize=FVector(yS,xS,0)*tileSize;
 	FVector halfSize=realSize*0.5f;
 	FTransform tr;
-	FVector topleft(halfSize.X+100.f,-halfSize.Y,0);
+	FVector topleft(halfSize.X+tileSize,-halfSize.Y,0);
 	FVector botleft(-halfSize.X,-halfSize.Y,0);
 	// left <-> right walls
-	for(int x=0;x<XSize;x++)
+	for(int x=0;x<xS;x++)
 	{
 		tr.SetLocation(topleft);
 		Unbreakable->AddInstance(tr);
-		topleft.Y+=100.f;
+		topleft.Y+=tileSize;
 		tr.SetLocation(botleft);
 		Unbreakable->AddInstance(tr);
-		botleft.Y+=100.f;
+		botleft.Y+=tileSize;
 	}
 	// up <-> down walls
-	topleft=FVector(halfSize.X,-halfSize.Y-100.f,0);
+	topleft=FVector(halfSize.X,-halfSize.Y-tileSize,0);
 	FVector topright(halfSize.X,halfSize.Y,0);
-	for(int y=0;y<YSize;y++)
+	for(int y=0;y<yS;y++)
 	{
 		tr.SetLocation(topleft);
 		Unbreakable->AddInstance(tr);
-		topleft.X-=100.f;
+		topleft.X-=tileSize;
 		tr.SetLocation(topright);
 		Unbreakable->AddInstance(tr);
-		topright.X-=100.f;
+		topright.X-=tileSize;
 	}
 	// place indestructible walls on the play field
 	topleft=FVector(halfSize.X,-halfSize.Y,0);
-	for(int y=1;y<YSize-1;y++)
+	for(int y=1;y<yS-1;y++)
 	{
-		for(int x=1;x<XSize-1;x++)
+		for(int x=1;x<xS-1;x++)
 		{
 			if(x&1 && y&1)
 			{
-				tileAlloc[XSize*y+x]=1;
+				tileAlloc[xS*y+x]=1;
 				FVector pos(-y,x,0);
-				pos*=100.f;
+				pos*=tileSize;
 				tr.SetLocation(topleft+pos);
 				Unbreakable->AddInstance(tr);
 			}
 		}
 	}
 	// place destructible walls where there is nothing else allocated
-	for(int y=0;y<YSize;y++)
+	for(int y=0;y<yS;y++)
 	{
-		for(int x=0;x<XSize;x++)
+		for(int x=0;x<xS;x++)
 		{
-			if(!tileAlloc[XSize*y+x])
+			if(!tileAlloc[xS*y+x])
 			{
 				FVector pos(-y,x,-0.15);
-				pos*=100.f;
+				pos*=tileSize;
 				tr.SetLocation(topleft+pos);
 				Breakable->AddInstance(tr);
 			}
@@ -169,8 +181,7 @@ bool APlayfield::BreakBreakable(const FVector& center)
 void APlayfield::BeginPlay()
 {
 	Super::BeginPlay();
-	initializeGame=true;
-	
+	CreateMap();
 }
 void	APlayfield::KillPlayers()
 {
@@ -199,7 +210,7 @@ ABMPlayer*	APlayfield::SpawnPlayer(UClass* tempclass, const FTransform &transfor
 void	APlayfield::SpawnPlayers()
 {
 	FTransform tr;
-	FVector halfSize=FVector(YSize,XSize,0)*50.f;
+	FVector halfSize=FVector(yS,xS,0)*tileSize*0.5f;
 	if(TemplatePlayer1)
 	{
 		FVector topleft(halfSize.X,-halfSize.Y,0);
@@ -209,21 +220,65 @@ void	APlayfield::SpawnPlayers()
 	if(TemplatePlayer2)
 	{
 		FVector topright(halfSize.X,halfSize.Y,0);
-		tr.SetLocation(topright+GetActorLocation()+FVector(0,-100,0));
+		tr.SetLocation(topright+GetActorLocation()+FVector(0,-tileSize,0));
 		players[1]=SpawnPlayer(TemplatePlayer2,tr);
 	}
 	if(TemplatePlayer3)
 	{
 		FVector botleft(-halfSize.X,-halfSize.Y,0);
-		tr.SetLocation(botleft+GetActorLocation()+FVector(100,0,0));
+		tr.SetLocation(botleft+GetActorLocation()+FVector(tileSize,0,0));
 		players[2]=SpawnPlayer(TemplatePlayer3,tr);
 	}
 	if(TemplatePlayer4)
 	{
 		FVector botright(-halfSize.X,halfSize.Y,0);
-		tr.SetLocation(botright+GetActorLocation()+FVector(100,-100,0));
+		tr.SetLocation(botright+GetActorLocation()+FVector(tileSize,-tileSize,0));
 		players[3]=SpawnPlayer(TemplatePlayer4,tr);
 	}
+}
+void APlayfield::CalcWinner()
+{
+
+	int32 aliveCount=0;
+	for(int i=0;i<numPlayers;i++)
+	{
+		if(players[i])
+			aliveCount++;
+	}
+	if(gameTimer==0)
+	{
+		if(aliveCount>1)
+		{
+			lastWinner=FString("Time out");
+			return;
+		}
+	}
+	if(aliveCount==1)
+	{
+		for(int i=0;i<numPlayers;i++)
+		{
+			if(players[i])
+			{
+				lastWinner=FString::Printf(TEXT("Player %d"),i);
+				return;
+			}
+		}
+	}
+
+	// if all dead, check if their life span
+	int32 player=0;
+	bool same=false;
+	for(int i=1;i<numPlayers;i++)
+	{
+		if(playerTimers[i]==playerTimers[player])
+			same=true;
+		if(playerTimers[i]>playerTimers[player])
+			player=i;
+	}
+	if(same)
+		lastWinner=FString("Draw");
+	else
+		lastWinner=FString::Printf(TEXT("Player %d"),player);
 }
 
 
@@ -234,23 +289,36 @@ void APlayfield::Tick(float DeltaTime)
 	if(!gameOver)
 	{
 		gameTimer-=DeltaTime;
+		for(int i=0;i<numPlayers;i++)
+		{
+			playerTimers[i]+=DeltaTime;
+		}
+
 		if(gameTimer<0)
 		{
 			gameTimer=0;
 			gameOver=true;
-			
+			CalcWinner();
 			memset(players,0,sizeof(players));
+
+		}
+		else
+		{
+			int n=0;
+			for(int i=0;i<numPlayers;i++)
+			{
+				if(players[i])
+					n++;
+			}
+			if(n<2)
+			{
+				gameOver=true;
+				CalcWinner();
+				memset(players,0,sizeof(players));
+				gameTimer=0;
+			}
 		}
 	
-	}
-	if(initializeGame)
-	{
-		CreateMap();
-		KillPlayers();
-		SpawnPlayers();
-		initializeGame=false;
-		gameTimer=gameTime;
-		gameOver=false;
 	}
 }
 
@@ -258,20 +326,32 @@ void APlayfield::Tick(float DeltaTime)
 void APlayfield::SetupPlayerInputComponent(UInputComponent* ic)
 {
 	Super::SetupPlayerInputComponent(ic);
-	ic->BindAction("Human1Fire",IE_Released,this,&APlayfield::Fire1);
+	ic->BindAction("Human1Fire",IE_Pressed,this,&APlayfield::Fire1);
 	ic->BindAxis("Human1Up",this,&APlayfield::Up1);
 	ic->BindAxis("Human1Right",this,&APlayfield::Right1);
 
-	ic->BindAction("Human2Fire",IE_Released,this,&APlayfield::Fire2);
+	ic->BindAction("Human2Fire",IE_Pressed,this,&APlayfield::Fire2);
 	ic->BindAxis("Human2Up",this,&APlayfield::Up2);
 	ic->BindAxis("Human2Right",this,&APlayfield::Right2);
+}
+void APlayfield::InitializeGame()
+{
+	CreateMap();
+	KillPlayers();
+	SpawnPlayers();
+	gameTimer=gameTime;
+	gameOver=false;
+	for(int i=0;i<numPlayers;i++)
+	{
+		playerTimers[i]=0;
+	}
 }
 
 void APlayfield::Fire1()
 {
 	if(gameOver)
 	{
-		initializeGame=true;
+		InitializeGame();
 		return;
 	}
 	if(!players[0])
@@ -297,7 +377,7 @@ void APlayfield::Fire2()
 {
 	if(gameOver)
 	{
-		initializeGame=true;
+		InitializeGame();
 		return;
 	}
 	if(!players[1])
@@ -386,5 +466,17 @@ FString	APlayfield::GetGameTime()
 	int sec=gameTimer-minute*60;
 	return FString::Printf(TEXT("%02d:%02d"),minute,sec);
 }
+
+
+bool	APlayfield::IsGameOver()
+{
+	return gameOver;
+
+}
+FString	APlayfield::GetLastWinner()
+{
+	return lastWinner;
+}
+
 #pragma optimize("",on)
 

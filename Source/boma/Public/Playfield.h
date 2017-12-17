@@ -4,7 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
+
+#define tileSize (100.f)
+
 #include "Playfield.generated.h"
+
+
 
 UCLASS()
 class BOMA_API APlayfield : public APawn
@@ -102,6 +107,12 @@ public:
 	UFUNCTION(BlueprintCallable)
 	FString	GetGameTime();
 
+	UFUNCTION(BlueprintCallable)
+	bool	IsGameOver();
+
+	UFUNCTION(BlueprintCallable)
+	FString	GetLastWinner();
+
 private:
 	void	Fire1();
 	void	Up1(float amount);
@@ -115,14 +126,22 @@ private:
 	void	SpawnPlayers();
 	void	CreateMap();
 
+	void	CalcWinner();
+	void	InitializeGame();
+
 	class ABMPlayer*	SpawnPlayer(class UClass* tempclass, const FTransform &transform);
 
 	class ABMPlayer* players[numPlayers];
+	float playerTimers[numPlayers];
 	TArray<class ABMPlayer*> spawned;
 
 	// game clock .. seconds left
 	float gameTimer;
+	FString	lastWinner;
 
-	uint32	initializeGame:1;
 	uint32	gameOver:1;
+
+	// actual size of playfield. 
+	int32	xS;
+	int32	yS;
 };
