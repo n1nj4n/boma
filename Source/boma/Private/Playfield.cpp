@@ -33,12 +33,13 @@ APlayfield::APlayfield()
 	YSize=15;
 	initializeGame=false;
 	memset(players,0,sizeof(players));
-	tileAlloc=nullptr;
 
 	NoLevelBuilding=false;
 
 	PickupSpawnPercetage=30.f;
 	gameTime=120.f;
+	gameOver=false;
+	gameTimer=0;
 
 }
 void APlayfield::CreateMap()
@@ -169,7 +170,6 @@ void APlayfield::BeginPlay()
 {
 	Super::BeginPlay();
 	initializeGame=true;
-	CreateMap();
 	
 }
 void	APlayfield::KillPlayers()
@@ -231,12 +231,26 @@ void	APlayfield::SpawnPlayers()
 void APlayfield::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if(!gameOver)
+	{
+		gameTimer-=DeltaTime;
+		if(gameTimer<0)
+		{
+			gameTimer=0;
+			gameOver=true;
+			
+			memset(players,0,sizeof(players));
+		}
+	
+	}
 	if(initializeGame)
 	{
+		CreateMap();
 		KillPlayers();
 		SpawnPlayers();
 		initializeGame=false;
-
+		gameTimer=gameTime;
+		gameOver=false;
 	}
 }
 
@@ -255,6 +269,11 @@ void APlayfield::SetupPlayerInputComponent(UInputComponent* ic)
 
 void APlayfield::Fire1()
 {
+	if(gameOver)
+	{
+		initializeGame=true;
+		return;
+	}
 	if(!players[0])
 		return;
 	players[0]->Fire();
@@ -276,6 +295,11 @@ void APlayfield::Right1(float amount)
 }
 void APlayfield::Fire2()
 {
+	if(gameOver)
+	{
+		initializeGame=true;
+		return;
+	}
 	if(!players[1])
 		return;
 	players[1]->Fire();
@@ -356,6 +380,11 @@ int32	APlayfield::GetPlayerAvailableBombs(int32 player)
 	return spawned[player]->GetAvailableBombs();
 }
 
-
+FString	APlayfield::GetGameTime()
+{
+	int minute=gameTimer/60;
+	int sec=gameTimer-minute*60;
+	return FString::Printf(TEXT("%02d:%02d"),minute,sec);
+}
 #pragma optimize("",on)
 

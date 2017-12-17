@@ -99,6 +99,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	int32	GetPlayerAvailableBombs(int32 player);
 
+	UFUNCTION(BlueprintCallable)
+	FString	GetGameTime();
+
 private:
 	void	Fire1();
 	void	Up1(float amount);
@@ -116,7 +119,10 @@ private:
 
 	class ABMPlayer* players[numPlayers];
 	TArray<class ABMPlayer*> spawned;
-	uint8*	tileAlloc;
+
+	// game clock .. seconds left
+	float gameTimer;
 
 	uint32	initializeGame:1;
+	uint32	gameOver:1;
 };
