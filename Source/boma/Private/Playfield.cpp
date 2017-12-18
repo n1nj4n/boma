@@ -39,12 +39,17 @@ APlayfield::APlayfield()
 	gameTime=120.f;
 	gameOver=true;
 	gameTimer=0;
+	CameraSpeed=400;
 
 }
 void APlayfield::CreateMap()
 {
 	if(NoLevelBuilding)
+	{
+		xS=4;
+		yS=4;
 		return;
+	}
 	Unbreakable->ClearInstances();
 	Breakable->ClearInstances();
 
@@ -182,6 +187,7 @@ void APlayfield::BeginPlay()
 {
 	Super::BeginPlay();
 	CreateMap();
+	CameraFOV=Camera->FieldOfView;
 }
 void	APlayfield::KillPlayers()
 {
@@ -280,7 +286,73 @@ void APlayfield::CalcWinner()
 	else
 		lastWinner=FString::Printf(TEXT("Player %d"),player);
 }
+void APlayfield::CameraUpdate(float DeltaTime)
+{
+	if(APlayerController* pC=Cast<APlayerController>(GetController()))
+	{
+		int32 x,y;
+		pC->GetViewportSize(x,y);
+		FVector vp(x,x,1);
+		if(y<x)vp=FVector(y,y,1);
+		FVector rvp(x,y,0);
+		FVector hvp=rvp*0.5f;
+		FVector mi(10000, 10000,0);
+		FVector ma(-10000,-10000,1);
 
+		FVector mi3(10000, 10000, 0);
+		FVector ma3(-10000,-10000,1);
+
+		float scale=rvp.X/rvp.Y;
+		if(rvp.X>rvp.Y)scale=rvp.Y/rvp.X;
+
+		// get approximated bound around players
+		FVector pr;
+		pr.Z=1;
+		FVector half(tileSize,tileSize,0);
+		half*=0.5f;
+		for(int i=0;i<spawned.Num();i++)
+		{
+			FVector pos=spawned[i]->GetActorLocation();
+
+			pC->ProjectWorldLocationToScreenWithDistance(pos+half,pr);
+
+			if(mi.X>pr.Y)mi.X=pr.Y;
+			if(ma.X<pr.Y)ma.X=pr.Y;
+			if(mi.Y>pr.X)mi.Y=pr.X;
+			if(ma.Y<pr.X)ma.Y=pr.X;
+
+			pC->ProjectWorldLocationToScreenWithDistance(pos-half,pr);
+			if(mi.X>pr.Y)mi.X=pr.Y;
+			if(ma.X<pr.Y)ma.X=pr.Y;
+			if(mi.Y>pr.X)mi.Y=pr.X;
+			if(ma.Y<pr.X)ma.Y=pr.X;
+
+
+
+			if(mi3.X>pos.X)mi3.X=pos.X;
+			if(ma3.X<pos.X)ma3.X=pos.X;
+			if(mi3.Y>pos.Y)mi3.Y=pos.Y;
+			if(ma3.Y<pos.Y)ma3.Y=pos.Y;
+
+		}
+		FVector size=ma-mi;
+		FVector sizeOriginal=ma3-mi3;
+		FVector center=(ma3+mi3)*0.5f;
+		size=FVector(1.f)/(size/vp);
+
+		if(rvp.X<rvp.Y)size.Y*=scale;
+		else size.X*=scale;
+		FVector p=Camera->GetComponentLocation();
+
+		if(size.X>0.9f && size.Y>0.9f)
+			p.Z-=CameraSpeed*DeltaTime;
+		else if(size.X<0.7f || size.Y<0.7f)
+			p.Z+=CameraSpeed*DeltaTime;
+		p.X=center.X;
+		p.Y=center.Y;
+		Camera->SetRelativeLocation(p);
+	}
+}
 
 // Called every frame
 void APlayfield::Tick(float DeltaTime)
@@ -288,6 +360,7 @@ void APlayfield::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if(!gameOver)
 	{
+		CameraUpdate(DeltaTime);
 		gameTimer-=DeltaTime;
 		for(int i=0;i<numPlayers;i++)
 		{

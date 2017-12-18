@@ -39,6 +39,9 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	float	gameTime;
 
+	// speed in m/s
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	float	CameraSpeed;
 
 
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
@@ -129,6 +132,8 @@ private:
 	void	CalcWinner();
 	void	InitializeGame();
 
+	void	CameraUpdate(float DeltaTime);
+
 	class ABMPlayer*	SpawnPlayer(class UClass* tempclass, const FTransform &transform);
 
 	class ABMPlayer* players[numPlayers];
@@ -144,4 +149,7 @@ private:
 	// actual size of playfield. 
 	int32	xS;
 	int32	yS;
+
+	// saved setup
+	float CameraFOV;
 };
