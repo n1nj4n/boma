@@ -17,8 +17,9 @@ ABMPickup::ABMPickup()
 	PickupMesh->SetCollisionProfileName("NoCollision");
 	PickupMesh->SetupAttachment(Collision);
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-//	PrimaryActorTick.bCanEverTick = false;
+	PrimaryActorTick.bCanEverTick = true;
 	createTime=0;
+	RotationSpeed=90.f;
 
 }
 
@@ -31,5 +32,13 @@ void ABMPickup::BeginPlay()
 	createTime = UGameplayStatics::GetRealTimeSeconds(GetWorld());
 	
 	
+}
+
+void ABMPickup::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	float rad=FMath::DegreesToRadians(RotationSpeed*DeltaTime);
+	PickupMesh->AddLocalRotation(FQuat(FVector(0,0,1),rad));
+
 }
 
