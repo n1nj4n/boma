@@ -7,7 +7,7 @@
 #include "BMPlayer.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FRemoteTrigg);
-
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLastMoveDone);
 UCLASS()
 class BOMA_API ABMPlayer : public APawn
 {
@@ -92,6 +92,9 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	bool IsAlive();
+
+	UPROPERTY(BlueprintAssignable)
+	FRemoteTrigg OnLastMoveDone;
 
 	int32	GetAvailableBombs(){return Bombs-spawnedBombs;}
 	void	kill(){alive=false;}

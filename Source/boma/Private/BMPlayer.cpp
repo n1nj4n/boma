@@ -179,6 +179,7 @@ void ABMPlayer::Move(float step)
 		{
 			stepDir=FVector(up,0,0);
 			up=0;
+			OnLastMoveDone.Broadcast();
 		}
 
 	}
@@ -198,6 +199,7 @@ void ABMPlayer::Move(float step)
 		{
 			stepDir=FVector(0,right,0);	
 			right=0;
+			OnLastMoveDone.Broadcast();
 		}
 
 	}
