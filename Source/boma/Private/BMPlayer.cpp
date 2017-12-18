@@ -125,8 +125,8 @@ void ABMPlayer::Up(float amount)
 			}
 		}
 	}
-
-
+	if(up==0)
+		OnLastMoveDone.Broadcast();
 }
 void ABMPlayer::Right(float amount)
 {
@@ -134,7 +134,9 @@ void ABMPlayer::Right(float amount)
 	if(a < 0.1f)
 		return;
 	if(right!=0 || up!=0)
+	{
 		return;
+	}
 	FVector dir(0,0,0);
 	FRotator oldRot=Rotation;
 	if(amount>0){right=100;Rotation.Yaw=90;dir.Y=tileSize;}
@@ -157,6 +159,8 @@ void ABMPlayer::Right(float amount)
 			}
 		}
 	}
+	if(right==0)
+		OnLastMoveDone.Broadcast();
 }
 void ABMPlayer::Move(float step)
 {
