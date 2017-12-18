@@ -20,10 +20,6 @@ class BOMA_API ABMPickup : public AActor
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	class UMaterialInterface*	PickupMaterial;
 
-	// degrees per second
-	UPROPERTY(EditAnywhere,BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
-	float	RotationSpeed;
-
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, meta = (AllowPrivateAccess = "true"))
 	float	createTime;
 
@@ -35,9 +31,8 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
 public:	
+
+	
 	
 };
