@@ -96,8 +96,6 @@ public:
 	UFUNCTION(BlueprintCallable)
 	bool	BreakBreakable(const FVector& center);
 
-	void	RemovePlayer(class ABMPlayer* player);
-
 	UFUNCTION(BlueprintCallable)
 	bool	IsPlayerAlive(int32 player);
 
@@ -115,6 +113,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	FString	GetLastWinner();
+
+	void	AddBomb(){placedBombs++;}
+	void	SubBomb(){placedBombs--;}
+	void	RemovePlayer(class ABMPlayer* player);
 
 private:
 	void	Fire1();
@@ -152,4 +154,6 @@ private:
 
 	// saved setup
 	float CameraFOV;
+
+	uint32 placedBombs;
 };

@@ -51,6 +51,7 @@ void ABMPlayer::SetupPlayerInputComponent(UInputComponent* ic)
 void ABMPlayer::AddAvailableBomb()
 {
 	if(spawnedBombs>0)spawnedBombs--;
+	MainPawn->SubBomb();
 
 }
 void ABMPlayer::Fire()
@@ -89,6 +90,8 @@ void ABMPlayer::Fire()
 		}
 		MainPawn->SpawnTemplate(BombTemplate,pos,this);
 		spawnedBombs++;
+		MainPawn->AddBomb();
+
 	}
 }
 void ABMPlayer::Up(float amount)

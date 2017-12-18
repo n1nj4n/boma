@@ -40,6 +40,7 @@ APlayfield::APlayfield()
 	gameOver=true;
 	gameTimer=0;
 	CameraSpeed=400;
+	placedBombs=1;
 
 }
 void APlayfield::CreateMap()
@@ -371,9 +372,6 @@ void APlayfield::Tick(float DeltaTime)
 		{
 			gameTimer=0;
 			gameOver=true;
-			CalcWinner();
-			memset(players,0,sizeof(players));
-
 		}
 		else
 		{
@@ -386,12 +384,20 @@ void APlayfield::Tick(float DeltaTime)
 			if(n<2)
 			{
 				gameOver=true;
-				CalcWinner();
-				memset(players,0,sizeof(players));
-				gameTimer=0;
 			}
 		}
 	
+	}
+	else
+	{
+		if(!placedBombs)
+		{
+			CalcWinner();
+			gameTimer=0;
+			memset(players,0,sizeof(players));
+			// nasty..
+			placedBombs++;
+		}
 	}
 }
 
@@ -412,6 +418,7 @@ void APlayfield::InitializeGame()
 	CreateMap();
 	KillPlayers();
 	SpawnPlayers();
+	placedBombs=0;
 	gameTimer=gameTime;
 	gameOver=false;
 	for(int i=0;i<numPlayers;i++)
@@ -551,6 +558,8 @@ FString	APlayfield::GetLastWinner()
 {
 	return lastWinner;
 }
+
+
 
 #pragma optimize("",on)
 
