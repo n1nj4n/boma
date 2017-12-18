@@ -26,6 +26,7 @@ ABMPlayer::ABMPlayer()
 	up=0;
 	right=0;
 	bTriggBomb=false;
+	alive=true;
 	spawnedBombs=0;
 	remoteTimer=0;
 
@@ -228,6 +229,7 @@ class APlayfield* ABMPlayer::GetPlayfield()
 void ABMPlayer::KillYourself()
 {
 	MainPawn->RemovePlayer(this);
+	alive=false;
 }
 
 void ABMPlayer::EnableRemote(float duration)
@@ -240,6 +242,10 @@ void ABMPlayer::EnableRemote(float duration)
 float ABMPlayer::GetRemoteTimer()
 {
 	return remoteTimer;
+}
+bool ABMPlayer::IsAlive()
+{
+	return alive;
 }
 
 #pragma optimize("",on)

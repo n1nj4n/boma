@@ -55,8 +55,8 @@ void APlayfield::CreateMap()
 	Breakable->ClearInstances();
 
 	// do some random on the size of the playfield
-	xS=XSize+(FMath::Rand()>>14)-2;
-	yS=YSize+(FMath::Rand()>>14)-2;
+	xS=XSize+(FMath::Rand()>>13)-4;
+	yS=YSize+(FMath::Rand()>>13)-4;
 	xS&=~1;
 	yS&=~1;
 	xS++;
@@ -372,6 +372,11 @@ void APlayfield::Tick(float DeltaTime)
 		{
 			gameTimer=0;
 			gameOver=true;
+			for(int i=0;i<numPlayers;i++)
+			{
+				if(players[i])
+					players[i]->kill();
+			}
 		}
 		else
 		{
@@ -394,6 +399,11 @@ void APlayfield::Tick(float DeltaTime)
 		{
 			CalcWinner();
 			gameTimer=0;
+			for(int i=0;i<numPlayers;i++)
+			{
+				if(players[i])
+					players[i]->kill();
+			}
 			memset(players,0,sizeof(players));
 			// nasty..
 			placedBombs++;
@@ -484,6 +494,8 @@ void APlayfield::Right2(float amount)
 
 void APlayfield::SpawnPickup(const FVector& pos)
 {
+	if(gameOver)
+		return;
 	if(FMath::RandRange(0,100)>PickupSpawnPercetage)
 		return;
 	int32 numPickups=Pickups.Num();
@@ -522,6 +534,7 @@ void	APlayfield::RemovePlayer(ABMPlayer* player)
 	else if(players[3]==player)
 		players[3]=nullptr;
 }
+
 bool	APlayfield::IsPlayerAlive(int32 player)
 {
 	if(!spawned.Num())

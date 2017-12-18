@@ -58,45 +58,49 @@ public:
 
 	// release a bomb at current location
 	UFUNCTION(BlueprintCallable)
-	virtual void Fire();
+	void Fire();
 
 	// move left
 	UFUNCTION(BlueprintCallable)
-	virtual void Up(float amount);
+	void Up(float amount);
 
 	// move right
 	UFUNCTION(BlueprintCallable)
-	virtual void Right(float amount);
+	void Right(float amount);
 
 	UFUNCTION(BlueprintCallable)
-	virtual class APlayfield* GetPlayfield();
+	class APlayfield* GetPlayfield();
 
 	// kill player, removes input
 	UFUNCTION(BlueprintCallable)
-	virtual void KillYourself();
+	void KillYourself();
 
 	// return used bomb to player
 	UFUNCTION(BlueprintCallable)
-	virtual void AddAvailableBomb();
+	void AddAvailableBomb();
 
 	// enable remote controlled bombs for a duration of time
 	UFUNCTION(BlueprintCallable)
-	virtual void EnableRemote(float duration);
+	void EnableRemote(float duration);
 
 	// check if remote controlled mode
 	UFUNCTION(BlueprintCallable)
-	virtual float GetRemoteTimer();
+	float GetRemoteTimer();
 
 	UPROPERTY(BlueprintAssignable)
 	FRemoteTrigg OnRemoteTrigg;
 
-	int32 GetAvailableBombs(){return Bombs-spawnedBombs;}
+	UFUNCTION(BlueprintCallable)
+	bool IsAlive();
 
+	int32	GetAvailableBombs(){return Bombs-spawnedBombs;}
+	void	kill(){alive=false;}
 private:
 	void	Move(float timeStep);
 	float	up;
 	float	right;
 	uint8	bTriggBomb:1;
+	uint8	alive:1;
 
 	FRotator Rotation;
 
