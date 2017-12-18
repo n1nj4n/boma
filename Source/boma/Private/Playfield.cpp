@@ -488,7 +488,8 @@ void APlayfield::SpawnPickup(const FVector& pos)
 	FActorSpawnParameters spwn;
 	spwn.SpawnCollisionHandlingOverride=ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 	ABMPickup*p =GWorld->SpawnActor<ABMPickup>(Pickups[idx],tr,spwn);
-	p->AttachToComponent(Root,FAttachmentTransformRules::KeepRelativeTransform);
+	if(p)
+		p->AttachToComponent(Root,FAttachmentTransformRules::KeepRelativeTransform);
 }
 void APlayfield::SpawnTemplate(class UClass* tempClass, const FVector& pos, AActor* SpawnOwner)
 {
