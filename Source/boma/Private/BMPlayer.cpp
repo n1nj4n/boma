@@ -254,4 +254,130 @@ bool ABMPlayer::IsAlive()
 	return alive;
 }
 
+bool ABMPlayer::AnyDestructablesAround()
+{
+	int up=MainPawn->CheckBreakable(GetActorLocation()		+FVector(100,0,0));
+	if(up>=0)
+		return true;
+	int down=MainPawn->CheckBreakable(GetActorLocation()	+FVector(-100,0,0));
+	if(down>=0)
+		return true;
+	int left=MainPawn->CheckBreakable(GetActorLocation()	+FVector(0,-100,0));
+	if(left>=0)
+		return true;
+	int right=MainPawn->CheckBreakable(GetActorLocation()	+FVector(0,100,0));
+	if(right>=0)
+		return true;
+	return false;
+}
+bool ABMPlayer::AnythingInfront()
+{
+	FRotator r(0,Rotation.Yaw,0);
+	FVector dir=r.RotateVector(FVector(100,0,0));
+	return MainPawn->AnyWall(GetActorLocation()+dir);
+}
+
+TArray<FVector> ABMPlayer::ValidStepDirections()
+{
+	FRotator r(0,Rotation.Yaw,0);
+	FVector frontdir=r.RotateVector(FVector(100,0,0));
+	FVector rightdir(-frontdir.Y,frontdir.X,0);
+	FVector pos=GetActorLocation();
+	TArray<FVector> ret;
+	FVector directions[4]={frontdir,-rightdir,rightdir,-frontdir};
+	for(int i=0;i<4;i++)
+	{
+		if(!MainPawn->AnyWall(pos+directions[i]))
+		{
+			ret.Add(directions[i]);
+		}
+	}
+	return ret;
+}
+void ABMPlayer::Step(FVector dir)
+{
+	if(dir.SizeSquared()==0)
+	{
+		if(Rotation.Yaw==0)Up(1);
+		else if(Rotation.Yaw==-90)Right(-1);
+		else if(Rotation.Yaw== 90)Right(1);
+		else Up(-1);
+		return;
+	}
+	if((dir|FVector(1,0,0)) >0.99f)
+		Up(1);
+	else if((dir|FVector(0,-1,0))>0.99f)
+		Right(-1);
+	else if((dir|FVector(-1,0,0))>0.99f)
+		Up(-1);
+	else if((dir|FVector(0,1,0))>0.99f)
+		Right(1);
+}
+
+AActor* ABMPlayer::ClosestOfClass(UClass* type, float radius)
+{
+	ULevel* pLev=GWorld->GetLevel(0);
+	AActor* closest=nullptr;
+	float dS=radius*radius;
+	for(int i=0;i<pLev->Actors.Num();i++)
+	{
+		AActor* a=pLev->Actors[i];
+		if(!a)
+			continue;
+		UClass* ac=a->GetClass();
+		if(ac==type)
+		{
+			FVector ad=a->GetActorLocation()-GetActorLocation();
+			float distSq=ad.SizeSquared();
+			if(dS>distSq)
+			{
+				dS=distSq;
+				closest=a;
+			}
+		}
+	}
+	return closest;
+}
+float ABMPlayer::DistanceOfClosestOfClass(UClass* type, float radius)
+{
+	ULevel* pLev=GWorld->GetLevel(0);
+	AActor* closest=nullptr;
+	float dS=radius*radius;
+	for(int i=0;i<pLev->Actors.Num();i++)
+	{
+		AActor* a=pLev->Actors[i];
+		if(a->StaticClass()==type)
+		{
+			FVector ad=a->GetActorLocation()-GetActorLocation();
+			float distSq=ad.SizeSquared();
+			if(dS>distSq)
+			{
+				dS=distSq;
+				closest=a;
+			}
+		}
+	}
+	return FMath::Sqrt(dS);
+}
+FVector ABMPlayer::MoveAwayFrom(AActor* object, const TArray<FVector>& directions)
+{
+	FVector ret(0,0,0);
+	if(!object)
+		return directions.Num()?directions[0]:FVector(0,0,0);
+	FVector from=object->GetActorLocation();
+	FVector me=GetActorLocation();
+	float moveToDist=(GetActorLocation()-from).SizeSquared();
+	int idx=0;
+	for(int i=0;i<directions.Num();i++)
+	{
+		float di=((me+directions[i])-from).SizeSquared();
+		if(di>moveToDist)
+		{
+			moveToDist=di;
+			ret=directions[i];
+		}
+	}
+	return ret;
+}
+
 #pragma optimize("",on)

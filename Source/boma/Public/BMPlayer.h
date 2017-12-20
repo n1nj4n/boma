@@ -96,6 +96,31 @@ public:
 	UPROPERTY(BlueprintAssignable)
 	FRemoteTrigg OnLastMoveDone;
 
+	UFUNCTION(BlueprintCallable)
+	bool AnyDestructablesAround();
+
+	UFUNCTION(BlueprintCallable)
+	bool AnythingInfront();
+
+	UFUNCTION(BlueprintCallable)
+	TArray<FVector> ValidStepDirections();
+
+	// steps towards pointing direction
+	UFUNCTION(BlueprintCallable)
+	void Step(FVector dir=FVector(0,0,0));
+
+	// get closest actor of type
+	UFUNCTION(BlueprintCallable)
+	AActor* ClosestOfClass(UClass* type, float radius);
+
+	// get distance of closest actor of type
+	UFUNCTION(BlueprintCallable)
+	float DistanceOfClosestOfClass(UClass* type, float radius);
+
+	// move away from an actor
+	UFUNCTION(BlueprintCallable)
+	FVector MoveAwayFrom(AActor* object, const TArray<FVector>& directions);
+
 	int32	GetAvailableBombs(){return Bombs-spawnedBombs;}
 	void	kill(){alive=false;}
 private:

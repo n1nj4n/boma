@@ -118,6 +118,8 @@ public:
 	void	SubBomb(){placedBombs--;}
 	void	RemovePlayer(class ABMPlayer* player);
 
+	bool	AnyWall(const FVector& center);
+
 private:
 	void	Fire1();
 	void	Up1(float amount);

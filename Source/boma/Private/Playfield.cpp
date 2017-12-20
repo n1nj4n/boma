@@ -572,6 +572,12 @@ FString	APlayfield::GetLastWinner()
 	return lastWinner;
 }
 
+bool	APlayfield::AnyWall(const FVector& center)
+{
+	if(CheckBreakable(center)>=0)
+		return  true;
+	return CheckUnbreakable(center);
+}
 
 
 #pragma optimize("",on)
