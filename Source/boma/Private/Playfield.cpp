@@ -41,6 +41,7 @@ APlayfield::APlayfield()
 	gameTimer=0;
 	CameraSpeed=400;
 	placedBombs=1;
+	SoftWallDistribution=100.f;
 
 }
 void APlayfield::CreateMap()
@@ -95,7 +96,7 @@ void APlayfield::CreateMap()
 	// randomize away some destructible walls.
 	for(int i=0;i<xS*yS;i++)
 	{
-		if(FMath::RandRange(0,1)>0.5f)
+		if(FMath::RandRange(0,1)>(SoftWallDistribution/100.f))
 			tileAlloc[i]=1;
 
 	}

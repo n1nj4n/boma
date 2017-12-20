@@ -36,6 +36,10 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	int	YSize;
 
+	// percent soft walls 
+	UPROPERTY(EditAnywhere,BlueprintReadWrite)
+	float	SoftWallDistribution;
+
 	UPROPERTY(EditAnywhere,BlueprintReadWrite)
 	float	gameTime;
 
