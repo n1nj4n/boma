@@ -41,7 +41,7 @@ APlayfield::APlayfield()
 	gameTimer=0;
 	CameraSpeed=400;
 	placedBombs=1;
-	SoftWallDistribution=100.f;
+	SoftWallDistribution=50.f;
 
 }
 void APlayfield::CreateMap()
