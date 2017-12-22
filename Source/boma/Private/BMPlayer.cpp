@@ -127,6 +127,8 @@ void ABMPlayer::Up(float amount)
 	}
 	if(up==0)
 		OnLastMoveDone.Broadcast();
+	else
+		OnMoveStart.Broadcast();
 }
 void ABMPlayer::Right(float amount)
 {
@@ -161,6 +163,8 @@ void ABMPlayer::Right(float amount)
 	}
 	if(right==0)
 		OnLastMoveDone.Broadcast();
+	else
+		OnMoveStart.Broadcast();
 }
 void ABMPlayer::Move(float step)
 {
@@ -318,7 +322,7 @@ AActor* ABMPlayer::ClosestOfClass(UClass* type, float radius)
 {
 	ULevel* pLev=GWorld->GetLevel(0);
 	AActor* closest=nullptr;
-	float dS=radius*radius;
+	float sd=radius*radius;
 	for(int i=0;i<pLev->Actors.Num();i++)
 	{
 		AActor* a=pLev->Actors[i];
@@ -329,35 +333,75 @@ AActor* ABMPlayer::ClosestOfClass(UClass* type, float radius)
 		{
 			FVector ad=a->GetActorLocation()-GetActorLocation();
 			float distSq=ad.SizeSquared();
-			if(dS>distSq)
+			if(sd>distSq)
 			{
-				dS=distSq;
+				sd=distSq;
 				closest=a;
 			}
 		}
 	}
 	return closest;
 }
+TArray<AActor*> ABMPlayer::GetSortedOfClasses(const TArray<UClass*> &types, float radius)
+{
+	TArray<AActor*> t;
+	TArray<float> tSD;
+	ULevel* pLev=GWorld->GetLevel(0);
+	AActor* closest=nullptr;
+	float sd=radius*radius;
+	for(int i=0;i<pLev->Actors.Num();i++)
+	{
+		AActor* a=pLev->Actors[i];
+		for(int j=0;j<types.Num();j++)
+		{
+			if(a->GetClass()==types[i])
+			{
+				FVector ad=a->GetActorLocation()-GetActorLocation();
+				float adSD=ad.SizeSquared();
+				if(adSD>sd)
+					continue;
+				if(!t.Num())
+				{
+					t.Add(a);
+					tSD.Add(adSD);
+					continue;
+				}
+				for(int i=0;i<tSD.Num();i++)
+				{
+					if(tSD[i]>adSD)
+					{
+						tSD.Insert(adSD,i);
+						t.Insert(a,i);
+						break;
+					}
+				}
+				break;
+			}
+		}
+	}
+	return t;
+}
+
 float ABMPlayer::DistanceOfClosestOfClass(UClass* type, float radius)
 {
 	ULevel* pLev=GWorld->GetLevel(0);
 	AActor* closest=nullptr;
-	float dS=radius*radius;
+	float sd=radius*radius;
 	for(int i=0;i<pLev->Actors.Num();i++)
 	{
 		AActor* a=pLev->Actors[i];
-		if(a->StaticClass()==type)
+		if(a->GetClass()==type)
 		{
 			FVector ad=a->GetActorLocation()-GetActorLocation();
 			float distSq=ad.SizeSquared();
-			if(dS>distSq)
+			if(sd>distSq)
 			{
-				dS=distSq;
+				sd=distSq;
 				closest=a;
 			}
 		}
 	}
-	return FMath::Sqrt(dS);
+	return FMath::Sqrt(sd);
 }
 FVector ABMPlayer::MoveAwayFrom(AActor* object, const TArray<FVector>& directions)
 {

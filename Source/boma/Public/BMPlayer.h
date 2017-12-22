@@ -8,6 +8,7 @@
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FRemoteTrigg);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLastMoveDone);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMoveStart);
 UCLASS()
 class BOMA_API ABMPlayer : public APawn
 {
@@ -94,7 +95,10 @@ public:
 	bool IsAlive();
 
 	UPROPERTY(BlueprintAssignable)
-	FRemoteTrigg OnLastMoveDone;
+	FOnLastMoveDone OnLastMoveDone;
+
+	UPROPERTY(BlueprintAssignable)
+	FOnLastMoveDone OnMoveStart;
 
 	UFUNCTION(BlueprintCallable)
 	bool AnyDestructablesAround();
@@ -112,6 +116,10 @@ public:
 	// get closest actor of type
 	UFUNCTION(BlueprintCallable)
 	AActor* ClosestOfClass(UClass* type, float radius);
+
+	// get closest actor of type
+	UFUNCTION(BlueprintCallable)
+	TArray<AActor*> GetSortedOfClasses(const TArray<UClass*> &types, float radius);
 
 	// get distance of closest actor of type
 	UFUNCTION(BlueprintCallable)
