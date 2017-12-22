@@ -6,6 +6,10 @@ Bomberman clone using UE 4.18.2
 
 C++ and Blueprint mix
 
+Pickups implemented
+Speed, Bombs, Bomb strength and Remote
+
+
 ![screenshot](Originals/shot.png)
 
 /Che
