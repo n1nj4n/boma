@@ -6,7 +6,7 @@
 #include "components/StaticMeshComponent.h"
 #include "playfield.h"
 // Sets default values
-#pragma optimize("",off)
+//#pragma optimize("",on)
 ABMPlayer::ABMPlayer()
 {
 
@@ -23,10 +23,10 @@ ABMPlayer::ABMPlayer()
 	SpeedFactor=1;
 	Speed=100.f;
 
-	up=0;
-	right=0;
-	bTriggBomb=false;
-	alive=true;
+	currentMove=FVector::ZeroVector;
+//	bTriggBomb=false;
+	bAlive=true;
+	PlayField=nullptr;
 	spawnedBombs=0;
 	remoteTimer=0;
 
@@ -37,209 +37,229 @@ void ABMPlayer::BeginPlay()
 {
 	Super::BeginPlay();
 	Rotation=GetActorRotation();
-	moveTo=moveFrom=GetActorLocation();
+	moveStart=moveEnd=GetActorLocation();
 }
 
 // Called to bind functionality to input
 void ABMPlayer::SetupPlayerInputComponent(UInputComponent* ic)
 {
 	Super::SetupPlayerInputComponent(ic);
-//	ic->BindAction("Human1Fire",IE_Released,this,&ABMPlayer::Fire);
-//	ic->BindAxis("Human1Up",this,&ABMPlayer::Up);
-//	ic->BindAxis("Human1Right",this,&ABMPlayer::Right);
-
+	// input-binding/broadcasts to human player is done in APlayfield
+	// AI is setup through a blueprint template
 }
 void ABMPlayer::AddAvailableBomb()
 {
 	if(spawnedBombs>0)spawnedBombs--;
-	MainPawn->SubBomb();
-
+	PlayField->SubBomb();
 }
+
+// trigger release of a bomb
 void ABMPlayer::Fire()
 {
 	bool remote=false;
 	if(remoteTimer!=0)
 		remote=true;
-	if(!remote)
-	{
-		if(spawnedBombs==Bombs)
-			return;
-	}
-	else
+	// check if we are in remote state
+	if(remote)
 	{
 		if(spawnedBombs==1)
 		{
+			// trigger bomb placed
 			OnRemoteTrigg.Broadcast();
 			return;
 		}
 	}
-
+	else
+	{
+		// check if we have reach our bomb limits
+		if(spawnedBombs==Bombs)
+			return;
+	}
 
 	if(BombTemplate)
 	{
+		// spawn at actor location
 		FVector pos=GetActorLocation();
-		if(!(up==0 && right==0))
+		float distanceLeft=FMath::Abs((currentMove.X+currentMove.Y)/tileSize);
+		// check if we are in a move.
+		if(distanceLeft!=0)
 		{
-			if(up<50.f && right<50.f)
+			if(distanceLeft<0.5f) // move has less than half left.. spawn bomb at destination of move
 			{
-				pos=moveTo;
+				// spawn at end point
+				pos=moveEnd;
 			}
-			else if(up>50.f || right>50.f)
+			else				 // move has more than half left.. spawn bomb at start of move
 			{
-				pos=moveFrom;
+				// spawn at start point
+				pos=moveStart;
 			}
 		}
-		MainPawn->SpawnTemplate(BombTemplate,pos,this);
+		PlayField->SpawnTemplate(BombTemplate,pos,this);
 		spawnedBombs++;
-		MainPawn->AddBomb();
+		PlayField->AddBomb();
 
 	}
 }
+
+// initialize move to up or down
 void ABMPlayer::Up(float amount)
 {
 	float a=FMath::Abs(amount);
+	// threshold
 	if(a < 0.1f)
 		return;
-	if(right!=0 || up!=0)
+	// check if we are in a move
+	float acc=currentMove.X+currentMove.Y;
+	if(acc!=0)
 		return;
 	FVector dir(0,0,0);
 	FRotator oldRot=Rotation;
-	if(amount>0){up=100;Rotation.Yaw=0;dir.X=tileSize;}
-	else {up=-100;Rotation.Yaw=180;dir.X=-tileSize;}
+	if(amount>0)
+	{
+		currentMove.X=100;
+		Rotation.Yaw=0;
+		dir.X=tileSize;
+	}
+	else
+	{
+		currentMove.X=-100;
+		Rotation.Yaw=180;
+		dir.X=-tileSize;
+	}
 	AddActorLocalRotation(Rotation-oldRot);
 	FVector pos=GetActorLocation();
-	moveFrom=pos;
-	moveTo=pos+dir;
-	if(MainPawn)
+	moveStart=pos;
+	moveEnd=pos+dir;
+	if(PlayField)
 	{
-		if(MainPawn->CheckUnbreakable(moveTo))
+		if(PlayField->CheckUnbreakable(moveEnd))
 		{
-			up=0;
+			currentMove.X=0;
 		}
-		if(up!=0)
+		if(currentMove.X!=0)
 		{
 
-			if(MainPawn->CheckBreakable(moveTo)>=0)
+			if(PlayField->CheckBreakable(moveEnd)>=0)
 			{
-				up=0;
+				currentMove.X=0;
 			}
 		}
 	}
-	if(up==0)
-		OnLastMoveDone.Broadcast();
+	if(currentMove.X==0)
+	{
+		OnMoveEnd.Broadcast();
+	}
 	else
 		OnMoveStart.Broadcast();
 }
+// initialize move to left or right
 void ABMPlayer::Right(float amount)
 {
 	float a=FMath::Abs(amount);
 	if(a < 0.1f)
 		return;
-	if(right!=0 || up!=0)
-	{
+	float acc=currentMove.X+currentMove.Y;
+	if(acc!=0)
 		return;
-	}
 	FVector dir(0,0,0);
 	FRotator oldRot=Rotation;
-	if(amount>0){right=100;Rotation.Yaw=90;dir.Y=tileSize;}
-	else {right=-100;Rotation.Yaw=-90;dir.Y=-tileSize;}
+	if(amount>0)
+	{
+		currentMove.Y=100;
+		Rotation.Yaw=90;
+		dir.Y=tileSize;
+	}
+	else
+	{
+		currentMove.Y=-100;
+		Rotation.Yaw=-90;
+		dir.Y=-tileSize;
+	}
 	AddActorLocalRotation(Rotation-oldRot);
 	FVector pos=GetActorLocation();
-	moveFrom=pos;
-	moveTo=pos+dir;
-	if(MainPawn)
+	moveStart=pos;
+	moveEnd=pos+dir;
+	if(PlayField)
 	{
-		if(MainPawn->CheckUnbreakable(moveTo))
+		if(PlayField->CheckUnbreakable(moveEnd))
 		{
-			right=0;
+			currentMove.Y=0;
 		}
-		if(right!=0)
+		if(currentMove.Y!=0)
 		{
-			if(MainPawn->CheckBreakable(moveTo)>=0)
+			if(PlayField->CheckBreakable(moveEnd)>=0)
 			{
-				right=0;
+				currentMove.Y=0;
 			}
 		}
 	}
-	if(right==0)
-		OnLastMoveDone.Broadcast();
+	if(currentMove.Y==0)
+	{
+		OnMoveEnd.Broadcast();
+	}
 	else
 		OnMoveStart.Broadcast();
 }
+// move pawn amount towards current direction
 void ABMPlayer::Move(float step)
 {
 	FVector stepDir(0,0,0);
-
-
-	if(up!=0)
+	// check and update movement in up/down directions
+	if(currentMove.X!=0)
 	{
-		if(up>step)
+		if(currentMove.X>step)
 		{
-			up-=step;
+			currentMove.X-=step;
 			stepDir=FVector(step,0,0);
 		}
-		else if(up<-step)
+		else if(currentMove.X<-step)
 		{
-			up+=step;
+			currentMove.X+=step;
 			stepDir=FVector(-step,0,0);
 		}
 		else
 		{
-			stepDir=FVector(up,0,0);
-			up=0;
-			OnLastMoveDone.Broadcast();
+			stepDir=FVector(currentMove.X,0,0);
+			currentMove.X=0;
+			moveStart=moveEnd;
+			OnMoveEnd.Broadcast();
 		}
 
 	}
-	else if(right!=0)
+	// else left/right directions
+	else if(currentMove.Y!=0)
 	{
-		if(right>step)
+		if(currentMove.Y>step)
 		{
-			right-=step;
+			currentMove.Y-=step;
 			stepDir=FVector(0,step,0);	
 		}
-		else if(right<-step)
+		else if(currentMove.Y<-step)
 		{
-			right+=step;
+			currentMove.Y+=step;
 			stepDir=FVector(0,-step,0);	
 		}
 		else
 		{
-			stepDir=FVector(0,right,0);	
-			right=0;
-			OnLastMoveDone.Broadcast();
+			stepDir=FVector(0,currentMove.Y,0);	
+			currentMove.Y=0;
+			moveStart=moveEnd;
+			OnMoveEnd.Broadcast();
 		}
-
 	}
 	AddActorWorldOffset(stepDir,true);
 }
 
-// Called every frame
-void ABMPlayer::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-	if(remoteTimer>0)
-		remoteTimer-=DeltaTime;
-	if(remoteTimer<0)
-		remoteTimer=0;
-	Move(Speed*SpeedFactor*DeltaTime);
-	if(bTriggBomb)
-	{
-		if(right==0 && up==0)
-		{
-			bTriggBomb=false;
-			Fire();
-		}
-	}
-}
+
 class APlayfield* ABMPlayer::GetPlayfield()
 {
-	return MainPawn;
+	return PlayField;
 }
-void ABMPlayer::KillYourself()
+void ABMPlayer::Disable()
 {
-	MainPawn->RemovePlayer(this);
-	alive=false;
+	PlayField->DisablePlayer(this);
+	bAlive=false;
 }
 
 void ABMPlayer::EnableRemote(float duration)
@@ -255,49 +275,16 @@ float ABMPlayer::GetRemoteTimer()
 }
 bool ABMPlayer::IsAlive()
 {
-	return alive;
+	return bAlive;
 }
 
-bool ABMPlayer::AnyDestructablesAround()
-{
-	int up=MainPawn->CheckBreakable(GetActorLocation()		+FVector(100,0,0));
-	if(up>=0)
-		return true;
-	int down=MainPawn->CheckBreakable(GetActorLocation()	+FVector(-100,0,0));
-	if(down>=0)
-		return true;
-	int left=MainPawn->CheckBreakable(GetActorLocation()	+FVector(0,-100,0));
-	if(left>=0)
-		return true;
-	int right=MainPawn->CheckBreakable(GetActorLocation()	+FVector(0,100,0));
-	if(right>=0)
-		return true;
-	return false;
-}
 bool ABMPlayer::AnythingInfront()
 {
 	FRotator r(0,Rotation.Yaw,0);
 	FVector dir=r.RotateVector(FVector(100,0,0));
-	return MainPawn->AnyWall(GetActorLocation()+dir);
+	return PlayField->AnyWall(GetActorLocation()+dir);
 }
-
-TArray<FVector> ABMPlayer::ValidStepDirections()
-{
-	FRotator r(0,Rotation.Yaw,0);
-	FVector frontdir=r.RotateVector(FVector(100,0,0));
-	FVector rightdir(-frontdir.Y,frontdir.X,0);
-	FVector pos=GetActorLocation();
-	TArray<FVector> ret;
-	FVector directions[4]={frontdir,-rightdir,rightdir,-frontdir};
-	for(int i=0;i<4;i++)
-	{
-		if(!MainPawn->AnyWall(pos+directions[i]))
-		{
-			ret.Add(directions[i]);
-		}
-	}
-	return ret;
-}
+// steps towards dir
 void ABMPlayer::Step(FVector dir)
 {
 	if(dir.SizeSquared()==0)
@@ -317,92 +304,7 @@ void ABMPlayer::Step(FVector dir)
 	else if((dir|FVector(0,1,0))>0.99f)
 		Right(1);
 }
-
-AActor* ABMPlayer::ClosestOfClass(UClass* type, float radius)
-{
-	ULevel* pLev=GWorld->GetLevel(0);
-	AActor* closest=nullptr;
-	float sd=radius*radius;
-	for(int i=0;i<pLev->Actors.Num();i++)
-	{
-		AActor* a=pLev->Actors[i];
-		if(!a)
-			continue;
-		UClass* ac=a->GetClass();
-		if(ac==type)
-		{
-			FVector ad=a->GetActorLocation()-GetActorLocation();
-			float distSq=ad.SizeSquared();
-			if(sd>distSq)
-			{
-				sd=distSq;
-				closest=a;
-			}
-		}
-	}
-	return closest;
-}
-TArray<AActor*> ABMPlayer::GetSortedOfClasses(const TArray<UClass*> &types, float radius)
-{
-	TArray<AActor*> t;
-	TArray<float> tSD;
-	ULevel* pLev=GWorld->GetLevel(0);
-	AActor* closest=nullptr;
-	float sd=radius*radius;
-	for(int i=0;i<pLev->Actors.Num();i++)
-	{
-		AActor* a=pLev->Actors[i];
-		for(int j=0;j<types.Num();j++)
-		{
-			if(a->GetClass()==types[i])
-			{
-				FVector ad=a->GetActorLocation()-GetActorLocation();
-				float adSD=ad.SizeSquared();
-				if(adSD>sd)
-					continue;
-				if(!t.Num())
-				{
-					t.Add(a);
-					tSD.Add(adSD);
-					continue;
-				}
-				for(int i=0;i<tSD.Num();i++)
-				{
-					if(tSD[i]>adSD)
-					{
-						tSD.Insert(adSD,i);
-						t.Insert(a,i);
-						break;
-					}
-				}
-				break;
-			}
-		}
-	}
-	return t;
-}
-
-float ABMPlayer::DistanceOfClosestOfClass(UClass* type, float radius)
-{
-	ULevel* pLev=GWorld->GetLevel(0);
-	AActor* closest=nullptr;
-	float sd=radius*radius;
-	for(int i=0;i<pLev->Actors.Num();i++)
-	{
-		AActor* a=pLev->Actors[i];
-		if(a->GetClass()==type)
-		{
-			FVector ad=a->GetActorLocation()-GetActorLocation();
-			float distSq=ad.SizeSquared();
-			if(sd>distSq)
-			{
-				sd=distSq;
-				closest=a;
-			}
-		}
-	}
-	return FMath::Sqrt(sd);
-}
+	// find best direction to move away from an actor using the directions array.
 FVector ABMPlayer::MoveAwayFrom(AActor* object, const TArray<FVector>& directions)
 {
 	FVector ret(0,0,0);
@@ -424,4 +326,21 @@ FVector ABMPlayer::MoveAwayFrom(AActor* object, const TArray<FVector>& direction
 	return ret;
 }
 
-#pragma optimize("",on)
+
+// Called every frame
+void ABMPlayer::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	// remote trigger bomb ?
+	if(remoteTimer>0)
+		remoteTimer-=DeltaTime;
+	if(remoteTimer<0)
+		remoteTimer=0;
+
+	// step amount this frame
+	float stepDistance=Speed*SpeedFactor*DeltaTime;
+	Move(stepDistance);
+
+}
+
+//#pragma optimize("",on)

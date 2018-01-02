@@ -7,20 +7,22 @@
 #include "BMPlayer.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FRemoteTrigg);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnLastMoveDone);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMoveStart);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnMove);
 UCLASS()
 class BOMA_API ABMPlayer : public APawn
 {
 	GENERATED_BODY()
 
 public:
+	// collision mesh
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	class USphereComponent*	Collision;
 
+	// rendered mesh
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	class UStaticMeshComponent*	Mesh;
 
+	// bomb template
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, meta = (AllowPrivateAccess = "true"))
 	class UClass*	BombTemplate;
 
@@ -40,12 +42,11 @@ public:
 	UPROPERTY(EditAnywhere,BlueprintReadWrite, Category = "Setup")
 	float	Speed;
 
-	void	SetMain(class APlayfield* main){MainPawn=main;}
+	// sets the playfield
+	void	SetMain(class APlayfield* pf){PlayField=pf;}
 
 
-	// Sets default values for this pawn's properties
 	ABMPlayer();
-
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -58,95 +59,94 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
 	// release a bomb at current location
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable,Category=Action)
 	void Fire();
 
-	// move left
-	UFUNCTION(BlueprintCallable)
+	// move up +1 , down -1
+	UFUNCTION(BlueprintCallable,Category=Action)
 	void Up(float amount);
 
-	// move right
-	UFUNCTION(BlueprintCallable)
+	// move right +1, left -1
+	UFUNCTION(BlueprintCallable,Category=Action)
 	void Right(float amount);
 
-	UFUNCTION(BlueprintCallable)
-	class APlayfield* GetPlayfield();
+	// disables player
+	UFUNCTION(BlueprintCallable,Category=Action)
+	void Disable();
 
-	// kill player, removes input
-	UFUNCTION(BlueprintCallable)
-	void KillYourself();
-
-	// return used bomb to player
-	UFUNCTION(BlueprintCallable)
+	// add bomb to player arsenal
+	UFUNCTION(BlueprintCallable,Category=Action)
 	void AddAvailableBomb();
 
-	// enable remote controlled bombs for a duration of time
-	UFUNCTION(BlueprintCallable)
+	// add time for remote controlled bombs.
+	UFUNCTION(BlueprintCallable,Category=Action)
 	void EnableRemote(float duration);
 
 	// check if remote controlled mode
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(BlueprintCallable,Category=Info)
 	float GetRemoteTimer();
 
-	UPROPERTY(BlueprintAssignable)
-	FRemoteTrigg OnRemoteTrigg;
-
-	UFUNCTION(BlueprintCallable)
+	// check if pawn has the possibility to be controlled
+	UFUNCTION(BlueprintCallable,Category=Info)
 	bool IsAlive();
 
-	UPROPERTY(BlueprintAssignable)
-	FOnLastMoveDone OnLastMoveDone;
+	// event for a placed remote bomb.
+	UPROPERTY(BlueprintAssignable,Category=Event)
+	FRemoteTrigg OnRemoteTrigg;
 
-	UPROPERTY(BlueprintAssignable)
-	FOnLastMoveDone OnMoveStart;
+	// event when move is initialized
+	UPROPERTY(BlueprintAssignable,Category=Event)
+	FOnMove OnMoveStart;
 
-	UFUNCTION(BlueprintCallable)
-	bool AnyDestructablesAround();
+	// event when move is finished
+	UPROPERTY(BlueprintAssignable,Category=Event)
+	FOnMove OnMoveEnd;
 
-	UFUNCTION(BlueprintCallable)
+	// check if anything in front of player
+	UFUNCTION(BlueprintCallable,Category=Info)
 	bool AnythingInfront();
 
-	UFUNCTION(BlueprintCallable)
-	TArray<FVector> ValidStepDirections();
-
-	// steps towards pointing direction
-	UFUNCTION(BlueprintCallable)
+	// steps towards dir
+	// if dir vector has zero length, current direction is used to step pawn
+	UFUNCTION(BlueprintCallable,Category=Action)
 	void Step(FVector dir=FVector(0,0,0));
 
-	// get closest actor of type
-	UFUNCTION(BlueprintCallable)
-	AActor* ClosestOfClass(UClass* type, float radius);
-
-	// get closest actor of type
-	UFUNCTION(BlueprintCallable)
-	TArray<AActor*> GetSortedOfClasses(const TArray<UClass*> &types, float radius);
-
-	// get distance of closest actor of type
-	UFUNCTION(BlueprintCallable)
-	float DistanceOfClosestOfClass(UClass* type, float radius);
-
-	// move away from an actor
-	UFUNCTION(BlueprintCallable)
+	// find best direction to move away from an actor using the directions array.
+	UFUNCTION(BlueprintCallable,Category=Info)
 	FVector MoveAwayFrom(AActor* object, const TArray<FVector>& directions);
 
+	// Number of spawn-able bombs.
 	int32	GetAvailableBombs(){return Bombs-spawnedBombs;}
-	void	kill(){alive=false;}
-private:
-	void	Move(float timeStep);
-	float	up;
-	float	right;
-	uint8	bTriggBomb:1;
-	uint8	alive:1;
 
+	// get game play field
+	UFUNCTION(BlueprintCallable,Category=Info)
+	class APlayfield* GetPlayfield();
+
+	// set myself as disabled
+	void	disable(){bAlive=false;}
+private:
+	// move player amount of unreal units
+	void	Move(float step);
+	// current move.. distance left
+	FVector	currentMove;
+
+	// is still playing
+	uint8	bAlive:1;
+
+	// local rotation
 	FRotator Rotation;
 
-	class APlayfield* MainPawn;
+	// helper to reach play field
+	class APlayfield* PlayField;
 
+	// number of spawned bombs on play field
 	int32	spawnedBombs;
 
-	FVector	moveFrom;
-	FVector	moveTo;
+	// spawn a bomb during a move
+	FVector	moveStart;
+	FVector	moveEnd;
 
+	// time left to dropped remote controlled bomb.
 	float remoteTimer;
 
 };

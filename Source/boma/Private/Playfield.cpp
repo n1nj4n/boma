@@ -7,8 +7,8 @@
 #include "Components/InputComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 
-#pragma optimize("",off)
-// 22
+//#pragma optimize("",on)
+
 // Sets default values
 APlayfield::APlayfield()
 {
@@ -22,7 +22,6 @@ APlayfield::APlayfield()
 	Unbreakable->SetupAttachment(Root);
 	Breakable->SetupAttachment(Root);
 
-	//	UnbreakableMaterial=nullptr;
  	// Set this pawn to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	TemplatePlayer1=nullptr;
@@ -36,7 +35,7 @@ APlayfield::APlayfield()
 	NoLevelBuilding=false;
 
 	PickupSpawnPercetage=30.f;
-	gameTime=120.f;
+	GameTime=120.f;
 	gameOver=true;
 	gameTimer=0;
 	CameraSpeed=400;
@@ -44,6 +43,27 @@ APlayfield::APlayfield()
 	SoftWallDistribution=50.f;
 
 }
+// Called when the game starts or when spawned
+void APlayfield::BeginPlay()
+{
+	Super::BeginPlay();
+	CreateMap();
+}
+
+// Called to bind functionality to input
+void APlayfield::SetupPlayerInputComponent(UInputComponent* ic)
+{
+	Super::SetupPlayerInputComponent(ic);
+	ic->BindAction("Human1Fire",IE_Pressed,this,&APlayfield::Fire1);
+	ic->BindAxis("Human1Up",this,&APlayfield::Up1);
+	ic->BindAxis("Human1Right",this,&APlayfield::Right1);
+
+	ic->BindAction("Human2Fire",IE_Pressed,this,&APlayfield::Fire2);
+	ic->BindAxis("Human2Up",this,&APlayfield::Up2);
+	ic->BindAxis("Human2Right",this,&APlayfield::Right2);
+}
+
+// creates the game area
 void APlayfield::CreateMap()
 {
 	if(NoLevelBuilding)
@@ -55,15 +75,18 @@ void APlayfield::CreateMap()
 	Unbreakable->ClearInstances();
 	Breakable->ClearInstances();
 
-	// do some random on the size of the playfield
+	// add some random to the size of the playfield
 	xS=XSize+(FMath::Rand()>>13)-4;
 	yS=YSize+(FMath::Rand()>>13)-4;
+	// make sure we create the playfield in right size
+	// needs to be uneven to create the playfield properly
 	xS&=~1;
 	yS&=~1;
 	xS++;
 	yS++;
 
-
+	// allocate and initialize our workarea
+	// used later when we create our breakable walls
 	uint8* tileAlloc=new uint8[xS*yS];
 	memset(tileAlloc,0,xS*yS);
 
@@ -81,61 +104,65 @@ void APlayfield::CreateMap()
 
 	// *
 	// ** player 3
-	int offset=xS*(yS-2);
+	int offset=xS*(yS-2);	// second last row.
 	tileAlloc[offset]=1;
 	tileAlloc[offset+xS]=1;
 	tileAlloc[offset+xS+1]=1;
 
 	//  *
 	// ** player 4
-	offset+=xS;
+	offset+=xS;			    // add one row, compensate below with subtracting 1 to offset 
 	tileAlloc[offset-1]=1;
 	tileAlloc[offset+xS-2]=1;
 	tileAlloc[offset+xS-1]=1;
 
-	// randomize away some destructible walls.
+	// randomize our allocation table with fake usage, creating holes in the map
 	for(int i=0;i<xS*yS;i++)
 	{
 		if(FMath::RandRange(0,1)>(SoftWallDistribution/100.f))
 			tileAlloc[i]=1;
 
 	}
-
-
 	// create surrounding wall
 	FVector realSize=FVector(yS,xS,0)*tileSize;
 	FVector halfSize=realSize*0.5f;
 	FTransform tr;
 	FVector topleft(halfSize.X+tileSize,-halfSize.Y,0);
 	FVector botleft(-halfSize.X,-halfSize.Y,0);
-	// left <-> right walls
+	// left <-> right walls around the playfirld
 	for(int x=0;x<xS;x++)
 	{
+		// create top unbreakable wall
 		tr.SetLocation(topleft);
 		Unbreakable->AddInstance(tr);
 		topleft.Y+=tileSize;
+		// create bottom unbreakable wall
 		tr.SetLocation(botleft);
 		Unbreakable->AddInstance(tr);
 		botleft.Y+=tileSize;
 	}
-	// up <-> down walls
+	// up <-> down walls around playfield
 	topleft=FVector(halfSize.X,-halfSize.Y-tileSize,0);
 	FVector topright(halfSize.X,halfSize.Y,0);
 	for(int y=0;y<yS;y++)
 	{
+		// create left unbreakable wall
 		tr.SetLocation(topleft);
 		Unbreakable->AddInstance(tr);
 		topleft.X-=tileSize;
+
+		// create right unbreakable wall
 		tr.SetLocation(topright);
 		Unbreakable->AddInstance(tr);
 		topright.X-=tileSize;
 	}
-	// place indestructible walls on the play field
+	// place unbreakable walls on the main play field
 	topleft=FVector(halfSize.X,-halfSize.Y,0);
 	for(int y=1;y<yS-1;y++)
 	{
 		for(int x=1;x<xS-1;x++)
 		{
+			// place a unbreakable wall when both x and y are uneven.
 			if(x&1 && y&1)
 			{
 				tileAlloc[xS*y+x]=1;
@@ -163,35 +190,8 @@ void APlayfield::CreateMap()
 	delete[] tileAlloc;
 }
 
-bool APlayfield::CheckUnbreakable(const FVector& center)
-{
-	TArray<int32> idx;
-	idx=Unbreakable->GetInstancesOverlappingSphere(center, 10.5f);
-	return idx.Num()!=0;
-}
-int32 APlayfield::CheckBreakable(const FVector& center)
-{
-	TArray<int32> idx;
-	idx=Breakable->GetInstancesOverlappingSphere(center, 10.5f);
-	return idx.Num()?idx[0]:-1;
-}
-bool APlayfield::BreakBreakable(const FVector& center)
-{
-	int32 id=CheckBreakable(center);
-	if(id<0)
-		return false;
-	Breakable->RemoveInstance(id);
-	SpawnPickup(center);
-	return true;
-}
-// Called when the game starts or when spawned
-void APlayfield::BeginPlay()
-{
-	Super::BeginPlay();
-	CreateMap();
-	CameraFOV=Camera->FieldOfView;
-}
-void	APlayfield::KillPlayers()
+
+void	APlayfield::RemovePlayers()
 {
 	for(int i=0;i<spawned.Num();i++)
 	{
@@ -200,7 +200,7 @@ void	APlayfield::KillPlayers()
 	spawned.SetNum(0,false);
 	memset(players,0,sizeof(players));
 }
-
+// Spawn a player
 ABMPlayer*	APlayfield::SpawnPlayer(UClass* tempclass, const FTransform &transform)
 {
 	FActorSpawnParameters spwn;
@@ -214,7 +214,7 @@ ABMPlayer*	APlayfield::SpawnPlayer(UClass* tempclass, const FTransform &transfor
 	}
 	return p;
 }
-
+// Spawn players for next round
 void	APlayfield::SpawnPlayers()
 {
 	FTransform tr;
@@ -223,34 +223,36 @@ void	APlayfield::SpawnPlayers()
 	{
 		FVector topleft(halfSize.X,-halfSize.Y,0);
 		tr.SetLocation(topleft+GetActorLocation());
-		players[0]=SpawnPlayer(TemplatePlayer1,tr);
+		players[0].player=SpawnPlayer(TemplatePlayer1,tr);
 	}
 	if(TemplatePlayer2)
 	{
 		FVector topright(halfSize.X,halfSize.Y,0);
 		tr.SetLocation(topright+GetActorLocation()+FVector(0,-tileSize,0));
-		players[1]=SpawnPlayer(TemplatePlayer2,tr);
+		players[1].player=SpawnPlayer(TemplatePlayer2,tr);
 	}
 	if(TemplatePlayer3)
 	{
 		FVector botleft(-halfSize.X,-halfSize.Y,0);
 		tr.SetLocation(botleft+GetActorLocation()+FVector(tileSize,0,0));
-		players[2]=SpawnPlayer(TemplatePlayer3,tr);
+		players[2].player=SpawnPlayer(TemplatePlayer3,tr);
 	}
 	if(TemplatePlayer4)
 	{
 		FVector botright(-halfSize.X,halfSize.Y,0);
 		tr.SetLocation(botright+GetActorLocation()+FVector(tileSize,-tileSize,0));
-		players[3]=SpawnPlayer(TemplatePlayer4,tr);
+		players[3].player=SpawnPlayer(TemplatePlayer4,tr);
 	}
 }
+// find out who's the winner
 void APlayfield::CalcWinner()
 {
 
 	int32 aliveCount=0;
+	// count alive players
 	for(int i=0;i<numPlayers;i++)
 	{
-		if(players[i])
+		if(players[i].player)
 			aliveCount++;
 	}
 	if(gameTimer==0)
@@ -265,7 +267,7 @@ void APlayfield::CalcWinner()
 	{
 		for(int i=0;i<numPlayers;i++)
 		{
-			if(players[i])
+			if(players[i].player)
 			{
 				lastWinner=FString::Printf(TEXT("Player %d"),i);
 				return;
@@ -278,9 +280,9 @@ void APlayfield::CalcWinner()
 	bool same=false;
 	for(int i=1;i<numPlayers;i++)
 	{
-		if(playerTimers[i]==playerTimers[player])
+		if(players[i].lifeTime==players[player].lifeTime)
 			same=true;
-		if(playerTimers[i]>playerTimers[player])
+		if(players[i].lifeTime>players[player].lifeTime)
 			player=i;
 	}
 	if(same)
@@ -288,6 +290,8 @@ void APlayfield::CalcWinner()
 	else
 		lastWinner=FString::Printf(TEXT("Player %d"),player);
 }
+
+// update camera to fit players on the screen
 void APlayfield::CameraUpdate(float DeltaTime)
 {
 	if(APlayerController* pC=Cast<APlayerController>(GetController()))
@@ -337,6 +341,7 @@ void APlayfield::CameraUpdate(float DeltaTime)
 			if(ma3.Y<pos.Y)ma3.Y=pos.Y;
 
 		}
+		// update camera location
 		FVector size=ma-mi;
 		FVector sizeOriginal=ma3-mi3;
 		FVector center=(ma3+mi3)*0.5f;
@@ -362,21 +367,22 @@ void APlayfield::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if(!gameOver)
 	{
+		// update timers
 		CameraUpdate(DeltaTime);
 		gameTimer-=DeltaTime;
 		for(int i=0;i<numPlayers;i++)
 		{
-			playerTimers[i]+=DeltaTime;
+			players[i].lifeTime+=DeltaTime;
 		}
-
 		if(gameTimer<0)
 		{
+			// time is up.. do end game
 			gameTimer=0;
 			gameOver=true;
 			for(int i=0;i<numPlayers;i++)
 			{
-				if(players[i])
-					players[i]->kill();
+				if(players[i].player)
+					players[i].player->disable();
 			}
 		}
 		else
@@ -384,26 +390,28 @@ void APlayfield::Tick(float DeltaTime)
 			int n=0;
 			for(int i=0;i<numPlayers;i++)
 			{
-				if(players[i])
+				if(players[i].player)
 					n++;
 			}
 			if(n<2)
 			{
+				// less than 2 left.. trigger end round
 				gameOver=true;
 			}
 		}
-	
 	}
 	else
 	{
+		// make sure all bombs have detonated
 		if(!placedBombs)
 		{
 			CalcWinner();
+
 			gameTimer=0;
 			for(int i=0;i<numPlayers;i++)
 			{
-				if(players[i])
-					players[i]->kill();
+				if(players[i].player)
+					players[i].player->disable();
 			}
 			memset(players,0,sizeof(players));
 			// nasty..
@@ -412,32 +420,19 @@ void APlayfield::Tick(float DeltaTime)
 	}
 }
 
-// Called to bind functionality to input
-void APlayfield::SetupPlayerInputComponent(UInputComponent* ic)
-{
-	Super::SetupPlayerInputComponent(ic);
-	ic->BindAction("Human1Fire",IE_Pressed,this,&APlayfield::Fire1);
-	ic->BindAxis("Human1Up",this,&APlayfield::Up1);
-	ic->BindAxis("Human1Right",this,&APlayfield::Right1);
 
-	ic->BindAction("Human2Fire",IE_Pressed,this,&APlayfield::Fire2);
-	ic->BindAxis("Human2Up",this,&APlayfield::Up2);
-	ic->BindAxis("Human2Right",this,&APlayfield::Right2);
-}
 void APlayfield::InitializeGame()
 {
 	CreateMap();
-	KillPlayers();
+	RemovePlayers();
+	memset(players,0,sizeof(players));
 	SpawnPlayers();
 	placedBombs=0;
-	gameTimer=gameTime;
+	gameTimer=GameTime;
 	gameOver=false;
-	for(int i=0;i<numPlayers;i++)
-	{
-		playerTimers[i]=0;
-	}
 }
 
+// Player 1 inputs
 void APlayfield::Fire1()
 {
 	if(gameOver)
@@ -445,25 +440,27 @@ void APlayfield::Fire1()
 		InitializeGame();
 		return;
 	}
-	if(!players[0])
+	if(!players[0].player)
 		return;
-	players[0]->Fire();
+	players[0].player->Fire();
 
 }
 void APlayfield::Up1(float amount)
 {
-	if(!players[0])
+	if(!players[0].player)
 		return;
-	players[0]->Up(amount);
+	players[0].player->Up(amount);
 
 }
 void APlayfield::Right1(float amount)
 {
-	if(!players[0])
+	if(!players[0].player)
 		return;
-	players[0]->Right(amount);
+	players[0].player->Right(amount);
 
 }
+
+// Player 2 inputs
 void APlayfield::Fire2()
 {
 	if(gameOver)
@@ -471,27 +468,26 @@ void APlayfield::Fire2()
 		InitializeGame();
 		return;
 	}
-	if(!players[1])
+	if(!players[1].player)
 		return;
-	players[1]->Fire();
+	players[1].player->Fire();
 
 
 }
 void APlayfield::Up2(float amount)
 {
-	if(!players[1])
+	if(!players[1].player)
 		return;
-	players[1]->Up(amount);
+	players[1].player->Up(amount);
 
 }
 void APlayfield::Right2(float amount)
 {
-	if(!players[1])
+	if(!players[1].player)
 		return;
-	players[1]->Right(amount);
+	players[1].player->Right(amount);
 
 }
-
 
 void APlayfield::SpawnPickup(const FVector& pos)
 {
@@ -522,25 +518,26 @@ void APlayfield::SpawnTemplate(class UClass* tempClass, const FVector& pos, AAct
 	AActor*p =GWorld->SpawnActor(tempClass,&pos,0,spwn);
 	if(p)
 		p->AttachToComponent(Root,FAttachmentTransformRules::KeepRelativeTransform);
-	int i=0;
 }
-void	APlayfield::RemovePlayer(ABMPlayer* player)
+void	APlayfield::DisablePlayer(ABMPlayer* player)
 {
-	if(players[0]==player)
-		players[0]=nullptr;
-	else if(players[1]==player)
-		players[1]=nullptr;
-	else if(players[2]==player)
-		players[2]=nullptr;
-	else if(players[3]==player)
-		players[3]=nullptr;
+	if(players[0].player==player)
+		players[0].player=nullptr;
+	else if(players[1].player==player)
+		players[1].player=nullptr;
+	else if(players[2].player==player)
+		players[2].player=nullptr;
+	else if(players[3].player==player)
+		players[3].player=nullptr;
 }
+
+// UI helpers
 
 bool	APlayfield::IsPlayerAlive(int32 player)
 {
 	if(!spawned.Num())
 		return false;
-	return players[player]!=0;
+	return players[player].player!=0;
 }
 int32	APlayfield::GetPlayerBombs(int32 player)
 {
@@ -562,7 +559,6 @@ FString	APlayfield::GetGameTime()
 	return FString::Printf(TEXT("%02d:%02d"),minute,sec);
 }
 
-
 bool	APlayfield::IsGameOver()
 {
 	return gameOver;
@@ -573,13 +569,173 @@ FString	APlayfield::GetLastWinner()
 	return lastWinner;
 }
 
-bool	APlayfield::AnyWall(const FVector& center)
+////
+// AI helpers
+////
+
+// check if any unbreakable walls at location
+bool APlayfield::CheckUnbreakable(const FVector& location)
 {
-	if(CheckBreakable(center)>=0)
+	TArray<int32> idx;
+	idx=Unbreakable->GetInstancesOverlappingSphere(location, 10.5f);
+	return idx.Num()!=0;
+}
+// returns id of breakable wall at location
+int32 APlayfield::CheckBreakable(const FVector& location)
+{
+	TArray<int32> idx;
+	idx=Breakable->GetInstancesOverlappingSphere(location, 10.5f);
+	return idx.Num()?idx[0]:-1;
+}
+// checks for any walls at location
+bool	APlayfield::AnyWall(const FVector& location)
+{
+	if(CheckBreakable(location)>=0)
 		return  true;
-	return CheckUnbreakable(center);
+	return CheckUnbreakable(location);
+}
+// break wall at location
+bool APlayfield::BreakBreakable(const FVector& location)
+{
+	int32 id=CheckBreakable(location);
+	if(id<0)
+		return false;
+	Breakable->RemoveInstance(id);
+	SpawnPickup(location);
+	return true;
+}
+// check any breakable walls around an actor.
+bool APlayfield::AnyBreakableAround(AActor* obj)
+{
+	FVector loc=obj->GetActorLocation();
+	int up	 =CheckBreakable(loc + FVector(100,0,0));
+	if(up>=0)
+		return true;
+	int down =CheckBreakable(loc + FVector(-100,0,0));
+	if(down>=0)
+		return true;
+	int left =CheckBreakable(loc + FVector(0,-100,0));
+	if(left>=0)
+		return true;
+	int right=CheckBreakable(loc + FVector(0,100,0));
+	if(right>=0)
+		return true;
+	return false;
+}
+// get closest actor of a type within radius 
+AActor* APlayfield::ClosestOfClass(AActor* obj, UClass* type, float radius)
+{
+	ULevel* pLev=GWorld->GetLevel(0);
+	AActor* closest=nullptr;
+	float sd=radius*radius;
+	FVector loc=obj->GetActorLocation();
+	for(int i=0;i<pLev->Actors.Num();i++)
+	{
+		AActor* a=pLev->Actors[i];
+		if(!a)
+			continue;
+		UClass* ac=a->GetClass();
+		if(ac==type)
+		{
+			FVector distance=a->GetActorLocation()-loc;
+			float distSq=distance.SizeSquared();
+			if(sd>distSq)
+			{
+				sd=distSq;
+				closest=a;
+			}
+		}
+	}
+	return closest;
+}
+// get array of sorted actors of specific classes within radius.
+TArray<AActor*> APlayfield::GetSortedOfClasses(AActor* obj, const TArray<UClass*> &types, float radius)
+{
+	TArray<AActor*> retActors;
+	if(!obj)
+		return retActors;
+	TArray<float> retActorsDistanceSquare;
+	ULevel* pLev=GWorld->GetLevel(0);
+	AActor* closest=nullptr;
+	float shortestDistance=radius*radius;
+	FVector loc=obj->GetActorLocation();
+	for(int i=0;i<pLev->Actors.Num();i++)
+	{
+		AActor* a=pLev->Actors[i];
+		if(!a)
+			continue;
+		for(int j=0;j<types.Num();j++)
+		{
+			if(a->GetClass()==types[j])
+			{
+				FVector distance=a->GetActorLocation()-loc;
+				float adSquareDistance=distance.SizeSquared();
+				if(adSquareDistance>shortestDistance)
+					continue;
+				if(!retActors.Num())
+				{
+					retActors.Add(a);
+					retActorsDistanceSquare.Add(adSquareDistance);
+					continue;
+				}
+				for(int k=0;k<retActorsDistanceSquare.Num();k++)
+				{
+					if(retActorsDistanceSquare[k]>adSquareDistance)
+					{
+						retActorsDistanceSquare.Insert(adSquareDistance,k);
+						retActors.Insert(a,k);
+						break;
+					}
+				}
+				break;
+			}
+		}
+	}
+	return retActors;
+}
+// get distance of closest actor of type
+float APlayfield::DistanceOfClosestOfClass(AActor* obj, UClass* type, float radius)
+{
+	ULevel* pLev=GWorld->GetLevel(0);
+	AActor* closest=nullptr;
+	float sd=radius*radius;
+	FVector loc=obj->GetActorLocation();
+	for(int i=0;i<pLev->Actors.Num();i++)
+	{
+		AActor* a=pLev->Actors[i];
+		if(a->GetClass()==type)
+		{
+			FVector distance=a->GetActorLocation()-loc;
+			float distSq=distance.SizeSquared();
+			if(sd>distSq)
+			{
+				sd=distSq;
+				closest=a;
+			}
+		}
+	}
+	return FMath::Sqrt(sd);
+}
+// returns valid step directions
+TArray<FVector> APlayfield::ValidStepDirections(AActor* actor)
+{
+	TArray<FVector> ret;
+	if(!actor)
+		return ret;
+	FRotator r(0,actor->GetActorRotation().Yaw,0);
+	FVector frontdir=r.RotateVector(FVector(100,0,0));
+	FVector rightdir=r.RotateVector(FVector(0,100,0));
+	FVector pos=actor->GetActorLocation();
+	FVector directions[4]={frontdir,-rightdir,rightdir,-frontdir};
+	for(int i=0;i<4;i++)
+	{
+		if(!AnyWall(pos+directions[i]))
+		{
+			ret.Add(directions[i]);
+		}
+	}
+	return ret;
 }
 
-
-#pragma optimize("",on)
+//#pragma optimize("",on)
 
